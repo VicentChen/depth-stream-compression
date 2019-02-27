@@ -364,6 +364,7 @@ ImageBuffer::ImageBuffer(int buffer_size, const char *folderpath) {
   char filepath[256];
   for (int i = 0; i < TOTAL_CAMS; i++) {
     sprintf(filepath, "%s/cam%d-diff-compressed.dsc", folderpath, i);
+    //sprintf(filepath, "%s/cam%d-compressed.dsc", folderpath, i);
     files[i].open(filepath, ios::binary);
   }
 

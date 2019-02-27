@@ -158,14 +158,13 @@ void cuda_compress(ifstream *files, ofstream *outputs, int *group, bool *is_cent
   int *d_UV;
   CHECK(cudaMalloc(&d_img_buffer, IMG_BUFFER_SIZE));
   CHECK(cudaMalloc(&d_diff_img_buffer, IMG_BUFFER_SIZE));
-  CHECK(cudaMalloc(&d_P, MAT_P_SIZE * TOTAL_CAMS));
+  CHECK(cudaMalloc(&d_P, MAT_P_SIZE * TOTAL_CAMS * sizeof(float)));
   CHECK(cudaMalloc(&d_XYZ, IMG_SIZE * 3 * sizeof(float)));
   CHECK(cudaMalloc(&d_UV, IMG_SIZE * 2 * sizeof(int)));
-  CHECK(cudaMemcpy(d_P, mat_P, MAT_P_SIZE * TOTAL_CAMS, cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_P, mat_P, MAT_P_SIZE * TOTAL_CAMS * sizeof(float), cudaMemcpyHostToDevice));
 
   int frame_start_pos_buffer[TOTAL_CAMS] = { 0 };
   for (int frame_no = 0; frame_no < TOTAL_FRAMES; frame_no++) {
-
     // ----- read images to gpu ----- //
     for (int i = 0; i < TOTAL_CAMS; i++) {
       files[i].seekg(frame_no * IMG_RGBD_SIZE);
@@ -214,6 +213,7 @@ void cuda_compress(ifstream *files, ofstream *outputs, int *group, bool *is_cent
 
     CHECK(cudaMemcpy(diff_img_buffer, d_img_buffer, IMG_BUFFER_SIZE, cudaMemcpyDeviceToHost));
     CHECK(cudaDeviceSynchronize());
+
     // display
     for (int i = 0; i < TOTAL_CAMS; i++) {
       unsigned char *diff_img = diff_img_buffer + i * IMG_RGBD_SIZE;
@@ -272,10 +272,10 @@ void cuda_recover(ImageBuffer& image_buffer, int main_stream_no, int center_no, 
   int *d_UV;
   int image_no;
   CHECK(cudaMalloc(&d_img_buffer, IMG_BUFFER_SIZE));
-  CHECK(cudaMalloc(&d_P, MAT_P_SIZE * TOTAL_CAMS));
+  CHECK(cudaMalloc(&d_P, MAT_P_SIZE * TOTAL_CAMS * sizeof(float)));
   CHECK(cudaMalloc(&d_XYZ, IMG_SIZE * 3 * sizeof(float)));
   CHECK(cudaMalloc(&d_UV, IMG_SIZE * 2 * sizeof(int)));
-  CHECK(cudaMemcpy(d_P, mat_P, MAT_P_SIZE * TOTAL_CAMS, cudaMemcpyHostToDevice));
+  CHECK(cudaMemcpy(d_P, mat_P, MAT_P_SIZE * TOTAL_CAMS * sizeof(float), cudaMemcpyHostToDevice));
 
   // ----- group based recover ----- //
   for (int frame_no = 0; ; frame_no = (frame_no + 1) % TOTAL_FRAMES) {
@@ -285,23 +285,30 @@ void cuda_recover(ImageBuffer& image_buffer, int main_stream_no, int center_no, 
     // ----- center stream recover ----- //
     if (center_no != main_stream_no) {
       coord_UVD_to_XYZ<<<IMG_HEIGHT, IMG_WIDTH>>>(d_img_buffer + IMG_RGB_SIZE, d_XYZ, GET_MAT_P(d_P, main_stream_no));
+      CHECK(cudaDeviceSynchronize());
       coord_XYZ_to_UV <<<IMG_HEIGHT, IMG_WIDTH>>>(d_XYZ, d_UV, GET_MAT_P(d_P, center_no));
+      CHECK(cudaDeviceSynchronize());
       recover_diff_image<<<IMG_HEIGHT, IMG_WIDTH / PIXEL_PER_THREAD >>>(d_img_buffer, d_img_buffer + IMG_RGBD_SIZE, d_UV);
+      CHECK(cudaDeviceSynchronize());
     }
     if (stream_no != center_no) {
       coord_UVD_to_XYZ<<<IMG_HEIGHT, IMG_WIDTH>>>(d_img_buffer + IMG_RGBD_SIZE + IMG_RGB_SIZE, d_XYZ, GET_MAT_P(d_P, center_no));
+      CHECK(cudaDeviceSynchronize());
       coord_XYZ_to_UV <<<IMG_HEIGHT, IMG_WIDTH>>>(d_XYZ, d_UV, GET_MAT_P(d_P, stream_no));
+      CHECK(cudaDeviceSynchronize());
       recover_diff_image<<<IMG_HEIGHT, IMG_WIDTH / PIXEL_PER_THREAD >>>(d_img_buffer + IMG_RGBD_SIZE, d_img_buffer + IMG_RGBD_SIZE * 2, d_UV);
+      CHECK(cudaDeviceSynchronize());
     }
 
     diff_img_buffer = img_buffer + IMG_RGBD_SIZE * 2;
 
-    CHECK(cudaMemcpy(diff_img_buffer, d_img_buffer + IMG_RGBD_SIZE * 2, IMG_RGBD_SIZE, cudaMemcpyDeviceToHost));
+    CHECK(cudaMemcpy(diff_img_buffer, d_img_buffer + IMG_RGBD_SIZE /** 2*/, IMG_RGBD_SIZE, cudaMemcpyDeviceToHost));
 
     // ----- display ----- //
     CImg<unsigned char> img(diff_img_buffer, IMG_WIDTH, IMG_HEIGHT, 1, IMG_CHANNEL, true);
     sprintf(frame_rate_str, "%.3f", disp.frames_per_second());
     img.draw_text(10, 10, frame_rate_str, front_color, back_color);
+    //img.display();
     disp.display(img);
     if (disp.is_closed()) break;
 

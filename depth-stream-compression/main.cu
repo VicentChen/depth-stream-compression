@@ -57,31 +57,30 @@ int main(int argc, char* argv[]) {
   //Displayer displayer;
   //displayer.display();
 
-  //Dsc dsc;
-  //dsc.compute_calib_params("img/MSR3DVideo-Breakdancers/calibParams-breakdancers.txt");
-  //CHECK(cudaSetDevice(0));
-  //CHECK(cudaSetDeviceFlags(cudaDeviceMapHost));
-  ////dsc.compress("img/MSR3DVideo-Breakdancers", 3, 4, 8, 25);
-  //dsc.recover("img/MSR3DVideo-Breakdancers", 0, 8);
-  //CHECK(cudaDeviceReset());
+  Dsc dsc;
+  dsc.compute_calib_params("img/MSR3DVideo-Breakdancers/calibParams-breakdancers.txt");
+  CHECK(cudaSetDevice(0));
+  CHECK(cudaSetDeviceFlags(cudaDeviceMapHost));
+  //dsc.compress("img/MSR3DVideo-Breakdancers", 3, 4, 8, 0);
+  dsc.recover("img/MSR3DVideo-Breakdancers", 0, 8);
+  CHECK(cudaDeviceReset());
 
   //unsigned char* img = (unsigned char*)malloc(IMG_SIZE * 4);
   //memset(img, 0, IMG_SIZE * 4);
   //ImageBuffer image_buffer(100, "img/MSR3DVideo-Breakdancers");
   //image_buffer.set_status(4, 1, 0, 0);
   //image_buffer.auto_load();
-  //for(int i = 0; i < 10; i++) {
-  //  img = image_buffer.get_image();
-  //  CImg<unsigned char> I(img + IMG_SIZE * 4, 1024, 768, 1, 3, true);
+  //img = image_buffer.get_image();
+  //for(int i = 0; i < 3; i++) {
+  //  CImg<unsigned char> I(img + IMG_SIZE * 4 * i, 1024, 768, 1, 3, true);
   //  I.display();
-  //  image_buffer.unload_image();
   //}
 
   //free(img);
   //dsc.funct();
 
-  CImg<unsigned char> I("img/MSR3DVideo-Breakdancers/cam0/depth-cam0-f000.png");
-  I.display();
+  //CImg<unsigned char> I("img/MSR3DVideo-Breakdancers/cam0/depth-cam0-f000.png");
+  //I.display();
 
   return 0;
 }
